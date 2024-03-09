@@ -1,0 +1,56 @@
+name: user_management
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+
+  redis:
+    hostname: redis
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  postgresqldb_service:
+    container_name: postgresdb_service_container
+    environment:
+      POSTGRES_DB: user_management_db
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    image: postgres:16.2
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "5432"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        target: /var/lib/postgresql/data
+        volume: {}
+
+  user_management_service:
+    build: ./
+    container_name: user_management_service_container
+    depends_on:
+      postgresqldb_service:
+        condition: service_started
+        required: true
+    image: user_management
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8080"
+        protocol: tcp
+
+networks:
+  default:
+    name: user_management_default
